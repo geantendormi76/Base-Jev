@@ -1,0 +1,42 @@
+[project]
+name = "base-jev-factory"
+version = "0.1.0"
+description = "Industrial System 1 Decision Model Factory (base-jev) powered by uv & GPU acceleration"
+readme = "README.md"
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "pydantic>=2.7.0",
+    "torch>=2.6.0",
+    "torchvision>=0.21.0",
+    "pillow>=10.0.0",
+    "transformers>=5.0.0",
+    "accelerate>=0.33.0",
+    "peft>=0.12.0",
+    "onnx>=1.16.0",
+    "onnxruntime-directml>=1.18.0",
+    "onnxconverter-common>=1.14.0",
+    "pytest>=8.0.0",
+    "huggingface-hub>=0.24.0",
+    "modelscope>=1.18.0",
+    "numpy>=1.26.0,<2.0.0",
+    "pyarrow>=25.0.1",
+    "tree-sitter>=0.26.0",
+    "tree-sitter-javascript>=0.25.0",
+]
+
+[tool.uv]
+package = false
+
+[[tool.uv.index]]
+name = "pytorch-cu124"
+url = "https://download.pytorch.org/whl/cu124"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu124" }
+torchvision = { index = "pytorch-cu124" }
+
+[tool.pytest.ini_options]
+pythonpath = ["packages/core/src", "src"]
+testpaths = ["tests"]
+

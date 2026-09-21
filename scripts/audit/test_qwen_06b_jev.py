@@ -2,7 +2,7 @@ import sys
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-PYTHON_SRC = PROJECT_ROOT / "src-tauri" / "python" / "src"
+PYTHON_SRC = PROJECT_ROOT / "python" / "packages" / "core" / "src"
 if str(PYTHON_SRC) not in sys.path:
     sys.path.insert(0, str(PYTHON_SRC))
 
@@ -62,3 +62,4 @@ def test_qwen_06b_compatibility():
 
 if __name__ == "__main__":
     test_qwen_06b_compatibility()
+

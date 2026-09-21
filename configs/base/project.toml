@@ -1,0 +1,13 @@
+[project]
+name = "base-jev"
+profile = "research"
+
+[paths]
+data = "data"
+models = "models"
+runs = "runs"
+artifacts = "artifacts"
+
+[runtime]
+backend = "directml"
+execution = "local"

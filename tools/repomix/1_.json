@@ -1,0 +1,258 @@
+{
+    "$schema": "https://repomix.com/schemas/latest/schema.json",
+
+    // ============================================================
+    // AI 项目交接专用 Repomix 配置
+    //
+    // 用途：
+    //   1. 新旧 AI 会话之间快速恢复项目上下文
+    //   2. 提供源码、架构、数据契约、配置契约、测试契约
+    //   3. 排除模型权重、原始数据、缓存、构建产物和临时文件
+    //
+    // 执行：
+    //   npx repomix -c tools/repomix/repomix.handoff.config.json5
+    //
+    // 推荐输出：
+    //   tmp/repomix/project-handoff.xml
+    //
+    // 说明：
+    //   - 保留完整源码，不启用全局 compress，避免丢失实现细节
+    //   - 测试也默认保留完整内容，因为测试属于行为契约
+    //   - 使用 includeFullDirectoryStructure，让 AI 即使没有读取
+    //     某些数据/模型文件内容，也能知道它们在仓库中的位置
+    // ============================================================
+
+    "input": {
+        // 防止异常巨型文本文件直接进入 AI 上下文。
+        // 模型权重、二进制文件等仍通过 binary handling / ignore 排除。
+        "maxFileSize": 50000000
+    },
+
+    "output": {
+        "filePath": "tmp/repomix/project-handoff.xml",
+        "filePathStyle": "target-relative",
+        "style": "xml",
+
+        // 保留完整实现。对于“继续开发”的交接包，
+        // 完整源码通常比极限压缩更有价值。
+        "compress": false,
+
+        // 为 AI 明确说明这个文件是什么、应该如何使用。
+        "headerText": "本文件是 AI 工程会话交接包。优先阅读 HANDOFF.md、README.md、configs/schemas，然后根据任务读取对应源码、测试和配置。不得把本文件视为替代源码树的永久事实源；实际修改前必须以仓库当前源码和测试为准。",
+
+        "fileSummary": true,
+        "directoryStructure": true,
+        "includeFullDirectoryStructure": true,
+        "includeEmptyDirectories": false,
+
+        "files": true,
+        "removeComments": false,
+        "removeEmptyLines": false,
+        "showLineNumbers": true,
+        "truncateBase64": true,
+
+        "git": {
+        // 让最近频繁变更的文件在包中更靠后，便于 AI 在完整读取时识别近期变化。
+        "sortByChanges": true,
+        "sortByChangesMaxCommits": 100,
+
+        // 默认关闭 diff / log，避免普通会话交接包因为历史信息膨胀。
+        // 需要审计 Git 历史时，再建立专用 forensic/review 配置。
+        "includeDiffs": false,
+        "includeLogs": false,
+        "includeLogsCount": 50
+        }
+    },
+
+    // ============================================================
+    // 1. 交接核心：必须进入 AI 上下文
+    // ============================================================
+    "include": [
+        "HANDOFF.md",
+        "README.md",
+
+        // 根级工程与依赖契约
+        "Cargo.toml",
+        "Cargo.lock",
+        "package.json",
+        "pnpm-workspace.yaml",
+        "pnpm-lock.yaml",
+        "rust-toolchain.toml",
+
+        // 工程自动化 / CI
+        ".github/**/*",
+
+        // 桌面应用
+        "apps/desktop/src/**/*",
+        "apps/desktop/src-tauri/src/**/*",
+        "apps/desktop/src-tauri/capabilities/**/*",
+        "apps/desktop/src-tauri/tauri.conf.json",
+        "apps/desktop/src-tauri/Cargo.toml",
+
+        // Rust 可复用引擎
+        "crates/**/*",
+
+        // Python / uv Workspace
+        "python/pyproject.toml",
+        "python/uv.lock",
+        "python/packages/**/*",
+        "python/scripts/**/*",
+        "python/tests/**/*",
+
+        // 配置注入层：保留 schema / examples / registry / base，
+        // 明确排除 local 中可能包含机器、密钥和私有参数的内容
+        "configs/base/**/*",
+        "configs/profiles/**/*",
+        "configs/examples/**/*",
+        "configs/schemas/**/*",
+        "configs/registry/**/*",
+
+        // 数据契约与元数据；不打包真实数据集
+        "data/manifests/**/*",
+        "data/fixtures/**/*",
+
+        // 模型注册与元数据；不打包权重
+        "models/registry/**/*",
+
+        // 运行与实验的“结构化契约 / 配置 / 元数据”
+        // 具体运行产物和大文件由 ignore 排除
+        "runs/**/manifest.*",
+        "runs/**/config.*",
+        "runs/**/metadata.*",
+
+        // 跨模块测试属于行为契约
+        "tests/**/*",
+
+        // 仓库级脚本
+        "scripts/**/*",
+
+        // 持久化工程知识
+        "docs/**/*",
+
+        // 交接工具自身的配置与说明，便于新会话知道如何重新提取上下文
+        "tools/**/*"
+    ],
+
+    // ============================================================
+    // 2. 强制排除：隐私、秘密、巨型资产、临时工件
+    // ============================================================
+    "ignore": {
+        "useGitignore": true,
+        "useDotIgnore": true,
+        "useDefaultPatterns": true,
+
+        "customPatterns": [
+        // AI 交接产物自身，避免递归打包
+        "tmp/repomix/**",
+        "**/repomix-output*.xml",
+
+        // 本地环境 / 密钥 / 私有凭证
+        ".env",
+        ".env.*",
+        "**/.env",
+        "**/.env.*",
+        "**/*.pem",
+        "**/*.key",
+        "**/*.p12",
+        "**/*.pfx",
+        "**/secrets/**",
+        "**/*credentials*/**",
+
+        // 模型权重 / 大型模型资产
+        "models/checkpoints/**",
+        "models/cache/**",
+        "models/**/*.gguf",
+        "models/**/*.safetensors",
+        "models/**/*.onnx",
+        "models/**/*.bin",
+        "models/**/*.pt",
+        "models/**/*.pth",
+        "models/**/*.ckpt",
+        "models/**/*.msgpack",
+
+        // 真实数据集 / 用户数据 / 大型数据文件
+        "data/raw/**",
+        "data/interim/**",
+        "data/processed/**",
+        "data/**/*.csv",
+        "data/**/*.parquet",
+        "data/**/*.arrow",
+        "data/**/*.jsonl",
+        "data/**/*.sqlite",
+        "data/**/*.db",
+        "data/**/*.xlsx",
+        "data/**/*.xls",
+        "data/**/*.docx",
+        "data/**/*.pdf",
+
+        // 实验运行输出
+        "runs/**/outputs/**",
+        "runs/**/artifacts/**",
+        "runs/**/checkpoints/**",
+        "runs/**/*.log",
+
+        // 正式产物
+        "artifacts/**",
+
+        // 通用临时目录
+        "tmp/**",
+
+        // 前端依赖 / 构建输出
+        "**/node_modules/**",
+        "**/dist/**",
+        "**/dist-ssr/**",
+        "**/build/**",
+
+        // Rust 构建产物
+        "**/target/**",
+        "**/*.rs.bk",
+
+        // Python 环境 / 缓存
+        "**/.venv/**",
+        "**/.uv/**",
+        "**/.uv_cache/**",
+        "**/__pycache__/**",
+        "**/*.pyc",
+        "**/*.pyo",
+        "**/.pytest_cache/**",
+        "**/.mypy_cache/**",
+        "**/.ruff_cache/**",
+
+        // IDE / OS 垃圾
+        "**/.DS_Store",
+        "**/Thumbs.db",
+        "**/.idea/**",
+        "**/.vscode/**",
+
+        // 大型二进制 / 打包文件
+        "**/*.exe",
+        "**/*.dll",
+        "**/*.so",
+        "**/*.dylib",
+        "**/*.lib",
+        "**/*.a",
+        "**/*.wasm",
+        "**/*.pdb",
+        "**/*.zip",
+        "**/*.7z",
+        "**/*.tar",
+        "**/*.gz",
+
+        // 覆盖率 / 临时报告
+        "**/coverage/**",
+        "**/.coverage",
+        "**/*.tmp",
+        "**/*.log"
+        ]
+    },
+
+    // 默认开启 Secretlint 安全检查。
+    "security": {
+        "enableSecurityCheck": true
+    },
+
+    // OpenAI-compatible tokenizer，便于在交接前观察 token 消耗。
+    "tokenCount": {
+        "encoding": "o200k_base"
+    }
+}

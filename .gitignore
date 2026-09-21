@@ -1,47 +1,40 @@
-# ==========================================
-# 🧠 本地大模型巨型权重文件 (Models - 防爆仓库)
-# ==========================================
-models/*
-!models/.gitkeep
-bin/
-*.gguf
-*.bin
-*.onnx
-*.safetensors
-*.pt
-*.pth
+# ---- OS / IDE ----
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.swp
+*.swo
 
-# ==========================================
-# 🔒 用户商业涉密数据与临时工件 (Data Privacy)
-# ==========================================
-data/*.xlsx
-data/*.docx
-data/*.pdf
-data/*.csv
-data/*.json
-!data/.gitkeep
+# ---- Environment / secrets ----
+.env
+.env.*
+!.env.example
+configs/local/**
+!configs/local/.gitkeep
 
-# 临时测试、质检中间产物与临时手术台
-tmp/*
-!tmp/.gitkeep
-test_*.json
-*_msg.json
-fact_step*.json
-repomix-output*.xml
-*_report.md
-*.tmp
-
-# ==========================================
-# 🦀 Rust & Tauri v2 动力总成 (Backend)
-# ==========================================
+# ---- Rust / Cargo ----
 target/
-src-tauri/target/
+**/target/
 **/*.rs.bk
-# 注意: 作为应用项目 (Application), Cargo.lock 必须纳入版本控制以锁定构建一致性!
+apps/desktop/src-tauri/gen/
+!Cargo.lock
 
-# ==========================================
-# 🔷 前端 (UI) 与 Node.js 产物
-# ==========================================
+# ---- Python / uv ----
+**/.venv/
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.uv_cache/
+python/.venv/
+
+# ---- Node / frontend ----
 **/node_modules/
 **/dist/
 **/dist-ssr/
@@ -51,39 +44,36 @@ yarn-debug.log*
 yarn-error.log*
 *.local
 
-# ==========================================
-# 🐍 Python 辅助 Worker 与 uv 沙箱环境
-# ==========================================
-**/.venv/
-**/__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.pytest_cache/
-.mypy_cache/
-.uv/
-.uv_cache/
+# ---- AI weights / caches (绝对严禁进入 Git!) ----
+models/checkpoints/**
+models/adapters/**
+models/tokenizers/**
+models/cache/**
+models/Qwen3*/**
+!models/*/.gitkeep
+*.gguf
+*.onnx
+*.safetensors
+*.pt
+*.pth
+*.bin
+*.msgpack
 
-# ==========================================
-# 💻 操作系统与 Windows MSVC 编译产物
-# ==========================================
-*.pdb
-*.lib
-*.exp
-*.ilk
-.DS_Store
-Thumbs.db
-*.swp
-*.swo
-.idea/
-.vscode/*
-!.vscode/extensions.json
-!.vscode/settings.json
-*.sln
-*.suo
-*.user
+# ---- User / private data ----
+data/inbox/**
+data/raw/**
+data/interim/**
+data/processed/**
+!data/*/.gitkeep
 
-# 环境变量与证书
-.env
-.env.*
-!.env.example
+# ---- Runs / generated artifacts / temporary workspace ----
+runs/**
+!runs/.gitkeep
+tmp/**
+!tmp/**/.gitkeep
+artifacts/**
+!artifacts/*/.gitkeep
+repomix-output*.xml
+*_report.md
+*.tmp
+*.bak

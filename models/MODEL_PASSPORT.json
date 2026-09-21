@@ -1,0 +1,36 @@
+{
+  "passport_version": "v1.0.0",
+  "model_uuid": "uuid-908db8140ab2",
+  "product_name": "Invar API Intent & Risk Reflex Engine (0.6B SOTA Native)",
+  "recipe_id": "invar-intent-0.6b-v1",
+  "created_at": "2026-09-21T09:34:46.076513500+00:00",
+  "sha256": "908db8140ab25a3230a0e541145b05421250c9a126078d0014f106b675ba11cc",
+  "file_size_bytes": 1311882039,
+  "primitives": [
+    "Choice",
+    "Boolean",
+    "Score",
+    "DualScore"
+  ],
+  "metrics": {
+    "clean_accuracy": 0.8419,
+    "ambiguous_confidence_suppression": 0.485,
+    "brier_score": 0.0061,
+    "expected_calibration_error": 0.0025
+  },
+  "benchmarks": {
+    "device_name": "NVIDIA GeForce RTX 3060 (12GB)",
+    "runtime": "DirectML (Direct3D 12)",
+    "steady_latency_ms": 23.080639,
+    "p99_latency_ms": 24.528,
+    "vram_allocated_mb": 1251.1082,
+    "supported_candidate_range": [
+      2,
+      255
+    ]
+  },
+  "artifacts": {
+    "onnx_relative_path": "dist/invar-intent-0.6b-v1/system_one_unified.onnx",
+    "tokenizer_relative_path": "dist/invar-intent-0.6b-v1/tokenizer.json"
+  }
+}

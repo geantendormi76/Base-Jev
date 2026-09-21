@@ -1,0 +1,8 @@
+{
+  "name": "base-jev-workspace",
+  "private": true,
+  "scripts": {
+    "desktop:dev": "pnpm --dir apps/desktop tauri dev",
+    "desktop:build": "pnpm --dir apps/desktop tauri build"
+  }
+}

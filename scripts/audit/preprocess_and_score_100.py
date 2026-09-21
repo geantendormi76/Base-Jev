@@ -2,7 +2,7 @@ import sys
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-SRC_DIR = PROJECT_ROOT / "src-tauri" / "python" / "src"
+SRC_DIR = PROJECT_ROOT / "python" / "packages" / "core" / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
@@ -212,6 +212,8 @@ def validate_business_endpoint(path_str: str, call_sig: str = "") -> Tuple[bool,
 
     p = path_str.strip()
 
+    if REGEX_META_RE.search(p):
+        return False, "Contains regex meta-characters"
     if CONSECUTIVE_SLASH_RE.search(p):
         return False, "Contains consecutive redundant slashes (e.g. ///)"
 
@@ -221,8 +223,6 @@ def validate_business_endpoint(path_str: str, call_sig: str = "") -> Tuple[bool,
     if CLIENT_HASH_RE.search(p):
         return False, "Contains client-side hash fragment (#)"
 
-    if REGEX_META_RE.search(p):
-        return False, "Contains regex meta-characters"
 
     p_clean = p.split("?")[0].split("#")[0]
     if STATIC_EXT_RE.search(p_clean):
@@ -544,3 +544,10 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+def extract_clean_slice(file_p: Path, path_str: str, call_sig: str = "", window: int = 250) -> str:
+    extractor = TreeSitterAstExtractor(window_chars=window)
+    clean_slice, _ = extractor.extract_slice(Path(file_p), path_str, call_sig)
+    return clean_slice
+

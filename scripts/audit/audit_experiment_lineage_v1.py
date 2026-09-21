@@ -270,8 +270,8 @@ class ExperimentLineageAuditor:
 
         # 2. 部署交付子树
         models_onnx = self.base_jev_root / "models" / "system_one_unified.onnx"
-        dist_onnx = self.base_jev_root / "dist" / "invar-intent-0.6b-v1" / "system_one_unified.onnx"
-        passport_path = self.base_jev_root / "dist" / "invar-intent-0.6b-v1" / "MODEL_PASSPORT.json"
+        dist_onnx = self.base_jev_root / "artifacts" / "packages" / "invar-intent-0.6b-v1" / "system_one_unified.onnx"
+        passport_path = self.base_jev_root / "artifacts" / "packages" / "invar-intent-0.6b-v1" / "MODEL_PASSPORT.json"
         
         passport_data = load_json(passport_path) or {}
         declared_passport_sha = passport_data.get("sha256", "")
@@ -822,4 +822,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
