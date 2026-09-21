@@ -1,0 +1,12 @@
+你好！请先完整阅读我使用 Repomix打包好的代码资产文件 `base-jev.xml`项目以及 `base-jev.xml`项目和HANDOFF.md
+
+---
+
+黄金标准：
+《Program-as-Weights: A Programming Paradigm for Fuzzy Functions》
+https://github.com/ifm-ai/PRism-curator
+https://github.com/TianyuCodings/NanoJev
+
+---
+
+请告知我你对我的项目理解，注意：这一步不用输出任何代码实现！请务必遵循系统设定提示词规范和要求（特别是2、3、4、5、7、12条例）！对齐黄金标准来实现！
