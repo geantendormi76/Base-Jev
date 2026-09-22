@@ -1,149 +1,105 @@
-# AI Development Handoff Specification
+# 📋 Base-Jev 核心待办事项与技术债务备忘录 (Backlog & Tech Debt)
 
-> **Document Type:** Cross-session engineering state snapshot & recovery contract
-> **Project:** base-jev (System-1 Cognitive Reflex Engine in Dual-Engine System)
-> **Canonical Root:** `C:\dev\Base-Jev` & `C:\dev\Invar` & `C:\dev\distiller`
-> **Snapshot Date:** 2026-09-22
-> **Document Version:** 7.0.0 (Standardized Monorepo Edition & Zero-Contamination Verified)
-> **Primary Purpose:** A new AI session must be able to reconstruct the exact engineering and research state from this document plus current repository source, tests, and configuration without relying on conversational history.
-
----
-
-## 0. Handoff Metadata
-
-| Item | Value | Evidence Level | Notes |
-|---|---|---|---|
-| Project Identity | base-jev + Invar | [FACT] | System-1 Fast Sensor (23ms) + System-2 Deep Verification |
-| Repository Architecture | AI Engineering Monorepo | [FACT] | Fully aligned to official Mother Scaffold (crates / python / configs / data / models) |
-| Model Factory Root | `C:\dev\Base-Jev` | [FACT] | Discriminative SFT Factory & DirectML TensorCore Runtime |
-| Distillation Workshop | `C:\dev\distiller` | [FACT] | Dual-Teacher Distillation (Qwen-27B Local + Gemini API) |
-| Downstream Verification | `C:\dev\Invar` | [FACT] | DualTrack Comparator, IDOR Differential Tester, Gold Set Evaluator |
-| Current Backbone | `models/Qwen3-0.6B-Base` | [FACT] | 1024D Hidden Size, `lm_head` physically stripped |
-| Production ONNX SHA256 | `908db8140ab25a32...` | [FACT] | 1251.11 MB single-file FP16 static graph |
-| Gold Set Ground Truth | 60 cards, 10 true high-risk | [FACT] | Zero-contamination verified (`Train ∩ Gold = ∅`) |
-| **Model Recall on Gold Set** | **80.00% (TP=8/10, FN=2)** | [FACT] | Precision: 36.36%, F1: 0.5000 (Outperformed Rule 50% / 0.3448) |
-| **Pool B Discrepancy Recall** | **100.00% (TP=5/5, FN=0)** | [FACT] | Precision: 62.50%, F1: 0.7692 (Rule completely failed: 0%) |
-| Rust Core Test Status | **3/3 PASSED (100%)** | [FACT] | `cargo test --workspace` verified |
-| Python Core Test Status | **37/37 PASSED (100%)** | [FACT] | `cd python; uv run pytest` verified (4 standard skips) |
-| Ghost Paths Audit | **0 Remaining** | [FACT] | Full audit passed via S5 Path Audit |
+> **任务标识**: `TASK-BASE-JEV-ONNX-DUAL-HEAD-V2`  
+> **关联项目**: `C:\dev\Base-Jev` (模型工厂) $\leftrightarrow$ `C:\dev\Invar` (下游单兵执行引擎)  
+> **记录时间**: 2026-09-22  
+> **状态**: `PENDING / SEALED (保留事实，待后续升级)`  
+> **优先级**: `P1 - 架构解耦与自包含发货重构`
 
 ---
 
-## 1. Project Identity & Triad Architecture
+## 1. 发现事实依据 (Factual Ground Truth)
 
-[DECISION]
-The system is an industrial Triad Architecture with clear boundaries:
-1. **distiller** (`C:\dev\distiller`): Expert knowledge distillation workshop. Dual-teacher distillation (Local Qwen-27B + Cloud Gemini Flash) with Tree-sitter AST extraction and physical Gold Firewall.
-2. **base-jev** (`C:\dev\Base-Jev` - This Repo): System-1 cognitive reflex frontend. Pure discriminative SFT (Soft-CE + Brier Score + Entropy loss). DirectML FP16 TensorCore execution (~23.08ms steady latency). Pure tensor classification, zero generative token overhead.
-3. **Invar** (`C:\dev\Invar`): System-2 execution and deep verification. DualTrack Comparator, IDOR differential testing, bounded symbolic execution, and future Cost-Aware GRPO.
+在对 `Base-Jev` 训练导出的 `system_one_unified.onnx` 和推理流水线进行实地探查时，确认以下客观事实：
+
+### 事实 1：物理计算图的输入输出张量现状
+通过 ONNX 拓扑直读探查确认，现有 `system_one_unified.onnx`（1.28 GB, FP16）的拓扑仅包含以下节点：
+* **输入张量 (Inputs)**:
+  `input_ids`, `attention_mask`, `choice_q_pos`, `choice_cand_pos`, `choice_mask`, `bool_q_pos`, `score_q_pos`
+* **输出张量 (Outputs)**:
+  `choice_probs`, `bool_probs`, `score_dist`, `score_expected`
+
+### 事实 2：PyTorch 训练态与 ONNX 导出态的严重错位 (Discrepancy)
+1. **PyTorch 源码中的真实实现 (`decision_heads.py`)**：
+   网络定义了**两个独立的物理打分头**，且在 `trainer.py` 中分别参与反向传播：
+   ```python
+   self.impact_head = ScoreOrdinalHead(hidden_size, score_max_levels)      # 破坏力打分头
+   self.sensitivity_head = ScoreOrdinalHead(hidden_size, score_max_levels) # 敏感度打分头
+   self.score_head = self.impact_head                                      # 旧单头兼容别名
+   ```
+2. **ONNX 导出包装类中的硬编码约束 (`onnx_export_wrapper.py`)**：
+   在导出时，`SystemOneOnnxWrapper` 仅连通了单打分头：
+   ```python
+   score_q_vecs = torch.index_select(seq_hidden, 0, score_q_pos)
+   _, score_dist, score_expected = self.heads.forward_score(score_q_vecs)
+   # 注: forward_score() 在 decision_heads.py 中内部硬编码只调用 self.impact_head!
+   ```
+3. **`self.sensitivity_head`（敏感度头）的实际权重**：
+   在静态图编译期间，由于没有连接到任何输出张量，敏感度头在 ONNX 导出时**被视为 Dead Code 剪枝，或者未被激活**。
+
+### 事实 3：推演脚本被迫退回 PyTorch 模式的真正根因
+在 `Base-Jev/python/scripts/generate_triage_predictions.py` 中，开发者之所以绕过了已导出的 ONNX 模型，转而使用重型 PyTorch 运行时推演，是因为：
+```python
+# 必须直接在 PyTorch 实例中分别调用双头，才能提取真实的双正交分数：
+_, imp_dist_t, imp_exp_t = model.heads.forward_impact(q_imp)
+_, sens_dist_t, sens_exp_t = model.heads.forward_sensitivity(q_sens)
+```
+**如果直接拿现有的 ONNX 计算图推演，第二维敏感度分数实际全是由破坏力权重计算出来的假数据。**
 
 ---
 
-## 2. Standardized Monorepo Layout (Post S1~S8 Migration)
+## 2. 产生的架构问题与技术债务 (Architecture Impact)
 
-```text
-C:/dev/Base-Jev/
-├── apps/
-│   └── desktop/                  # React + TypeScript + Tailwind + Tauri v2 product shell
-├── crates/
-│   └── core/                     # Rust DirectML TensorCore runtime engine & base-jev-qa tool
-├── python/
-│   ├── packages/
-│   │   └── core/                 # System-1 decision heads, sequence packer, joint loss
-│   ├── scripts/                  # train_factory_model.py, export_to_onnx.py, generate_triage_predictions.py
-│   ├── tests/                    # 37 Python test suite (contracts, heads, loss, packer)
-│   └── pyproject.toml            # uv-managed workspace configuration
-├── configs/
-│   ├── base/                     # committed defaults (project.toml)
-│   ├── profiles/                 # recipe_invar_0.6b.json, research.toml
-│   ├── registry/                 # backends.toml (declarative registry)
-│   └── schemas/                  # config.schema.json
-├── data/
-│   ├── inbox/, raw/, interim/, processed/, fixtures/, manifests/
-├── models/
-│   ├── Qwen3-0.6B-Base/          # Pretrained base weights (1024D)
-│   ├── Qwen3-0.6B-Base-SystemOne-Invar/  # LoRA adapter & decision heads checkpoint
-│   ├── system_one_unified.onnx   # DirectML unified static graph (1.25 GB)
-│   └── registry/                 # Model passports and metadata
-├── artifacts/
-│   ├── exports/, reports/, metrics/, packages/
-├── scripts/
-│   ├── audit/                    # 18 forensic audit & lineage scripts
-│   ├── data/                     # download_dataset.py, download_model.py, preprocess_fuzzybench_jev.py
-│   └── build/                    # consolidate_onnx.py
-├── docs/
-│   ├── ai/                       # HANDOFF.md, REPOSITORY_CLOSURE.md, FILE_DECISIONS.md, PATH_MIGRATION.md
-│   ├── architecture/             # System architecture & runtime boundaries
-│   ├── decisions/                # ADRs
-│   └── research/                 # Experimental evidence & benchmark logs
-├── tools/
-│   ├── bootstrap/                # ai_monorepo_scaffold.py
-│   └── repomix/                  # 1_.json (official context packaging config)
-├── tmp/                          # Disposable ephemeral workspace (repomix/ etc.)
-├── Cargo.toml                    # Root Rust workspace (manages crates/core, apps/*/src-tauri)
-├── package.json                  # Root Node/pnpm workspace
-├── pnpm-workspace.yaml
-├── .editorconfig
-├── .gitattributes
-├── .gitignore                    # Whitelists !.gitkeep, ignores target, .venv, runs, tmp
-├── README.md                     # Monorepo directory map & runbook
-└── HANDOFF.md                    # Root handoff contract (mirrored from docs/ai/HANDOFF.md)
+1. **违背单兵作战原则**：
+   `Invar` 无法完全脱离 `Base-Jev`。每次有新靶场需要执行 System-1 接口意图预测时，下游必须强行依赖 `Base-Jev` 的重型 GPU 环境（PyTorch + Transformers + CUDA + PEFT）。
+2. **出厂护照（Passport）定义脱节**：
+   `MODEL_PASSPORT.json` 中声明了 `DualScore` 原语，但物理单文件 ONNX 计算图实际上仅导出了单头 `Score` 算子。
+
+---
+
+## 3. 长远系统升级方案 (Target Architecture & Roadmap)
+
+未来系统升级时，需按照以下 4 步执行端到端物理闭环：
+
+### 步骤 A：升级 ONNX 导出包装器 (`onnx_export_wrapper.py`)
+重构 `SystemOneOnnxWrapper`，显式接入物理双头计算图，支持双正交打分张量并行输出：
+```python
+# 改造目标:
+def forward(self, ..., imp_q_pos: torch.Tensor, sens_q_pos: torch.Tensor):
+    ...
+    # Impact 破坏力头
+    imp_vecs = torch.index_select(seq_hidden, 0, imp_q_pos)
+    _, imp_dist, imp_expected = self.heads.forward_impact(imp_vecs)
+    
+    # Sensitivity 敏感度头
+    sens_vecs = torch.index_select(seq_hidden, 0, sens_q_pos)
+    _, sens_dist, sens_expected = self.heads.forward_sensitivity(sens_vecs)
+    
+    return choice_probs, bool_probs, imp_dist, imp_expected, sens_dist, sens_expected
 ```
 
----
+### 步骤 B：重新执行烧结融合与 ONNX 导出 (`export_to_onnx.py`)
+1. 注册新的输出张量名称：
+   * `impact_dist`, `impact_expected`
+   * `sensitivity_dist`, `sensitivity_expected`
+2. 动态轴绑定更新为 `(num_scores, 5)` 与 `(num_scores, 1)`；
+3. 产出全新自包含二进制图：`system_one_dual_v2.onnx`。
 
-## 3. Verified Test & Run Commands
+### 步骤 C：更新 Rust 硬件质检台 (`crates/core/src/engine.rs` & `main.rs`)
+1. 调整 DirectML 运行时的解构元组，读取 `impact_expected` 和 `sensitivity_expected`；
+2. 运行 `cargo run --bin base-jev-qa`，重新验证 RTX 3060 DirectML 稳态延迟（目标依旧维持在 $\le 30\text{ms}$）；
+3. 重新签发更新版 `MODEL_PASSPORT.json` (v2.0.0)。
 
-### Rust Core Workspace
-```powershell
-cargo test --workspace
-```
-* **Status**: `ok. 3 passed; 0 failed; 0 ignored; finished in 0.00s`
-* **Test cases**: `test_model_passport_serde_roundtrip`, `test_production_recipe_serde_roundtrip`, `test_decision_batch_serde_roundtrip`.
-
-### Python Core Workspace (uv)
-```powershell
-cd python
-uv run pytest
-cd ..
-```
-* **Status**: `37 passed, 4 skipped in 3.69s` (4 skipped are GPU/full weight dependencies).
-* **Test suites**: `test_contracts`, `test_decision_heads`, `test_endpoint_validation`, `test_fuzzybench_preprocessing`, `test_joint_rlcd_loss`, `test_onnx_export`, `test_sequence_packer`, `test_system_one_model`.
+### 步骤 D：在 Invar 仓内落地极简纯 ONNX 推理器
+在 `Invar/scripts/data/pipeline/`（或 `python/scripts/`）下编写完全自包含的 `predict_triage_onnx.py`：
+* 依赖仅包含：`onnxruntime-directml` + `tokenizers`（纯 Rust 绑定的 Fast Tokenizer）+ `numpy`；
+* 零 PyTorch，零 CUDA Toolkit；
+* Invar 用户直接运行单命令即可一键完成万级端点的 23ms 秒级推演，达成**彻底的物理单兵化交付**。
 
 ---
 
-## 4. Architectural Invariants (铁律不变量)
+## 4. 当前运行基准物证备忘 (Current Verified Baseline)
 
-* **I-01: Zero Contamination**: `TRAIN ∩ GOLD = ∅`. Gold cards (60 endpoints) must NEVER leak into training datasets. Physical firewall verified by E3 audit.
-* **I-02: 1:1 Prediction Parity**: `len(predictions) == len(endpoints)` (1221/1221 aligned, zero silent omissions).
-* **I-03: Tensor-Only Output**: `base-jev` outputs probabilities and ordinal expectation tensors; zero autoregressive text generation overhead.
-* **I-04: Fail-Closed Joins**: Evaluator and comparator joins must fail-fast on unmatched surface IDs (zero silent 3.0 fallbacks).
-* **I-05: Causal Packing Order**: In sequence packing: `State Context` ≺ `Candidates` ≺ `Queries`.
-* **I-06: Dual Orthogonal Heads**: Safety risk is strictly factorized into **Impact** (state change / destruction) and **Sensitivity** (asset confidentiality).
+* 当前用于对齐的推演物证：`C:\dev\Invar\tmp\base_jev_predictions_1216.jsonl`
+* 该物证由 `Base-Jev` 在 GPU 真实双头（`forward_impact` + `forward_sensitivity`）全精度计算下产出，精度与特征分布完整且经过 1:1 对齐检验，可作为后续 ONNX v2 导出的**绝对对照黄金真值（Ground Truth Benchmark）**。
 
----
-
-## 5. Active Data & Model Contracts
-
-* **Production Recipe**: `configs/profiles/recipe_invar_0.6b.json`
-* **Base Model**: `models/Qwen3-0.6B-Base` (1024 hidden size)
-* **Checkpoint**: `models/Qwen3-0.6B-Base-SystemOne-Invar/` (`backbone_lora/` + `decision_heads.pt`)
-* **Unified ONNX**: `models/system_one_unified.onnx` (DirectML FP16)
-* **Active Distillation Datasets**:
-  - `data/API_distilled/distilled_invar_train.jsonl` (400 train, Gemini Flash)
-  - `data/API_distilled/distilled_invar_eval.jsonl` (100 eval)
-  - `data/Local_distilled/distilled_invar_train.jsonl` (400 train, Qwen-27B)
-  - `data/Local_distilled/distilled_invar_eval.jsonl` (100 eval)
-* **Gold Ground Truth**: `C:/dev/Invar/data/targets/ikuai8.com/gold_set_annotated_v1.jsonl` (60 cards)
-
----
-
-## 6. Current Objective & Next Single Action
-
-**CURRENT PHASE:** Phase 4 - Dual-Teacher Ensemble & Small Ablation
-
-**CURRENT OBJECTIVE:**
-Evaluate teacher consensus (Local Qwen-27B vs Cloud Gemini API), design a Teacher Agreement Gate, and prepare a merged, high-signal training dataset for downstream Invar System-2 verification.
-
-**NEXT SINGLE ACTION:**
-Run the teacher agreement analysis and ablation pipeline between `data/Local_distilled/` and `data/API_distilled/` to measure consensus rate, discrepancy distribution, and downstream performance impact on Invar.

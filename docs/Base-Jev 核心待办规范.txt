@@ -1,0 +1,164 @@
+# 📌 Base-Jev 核心待办规范：导出真·双正交头 ONNX 模型与 Invar 彻底物理切割
+
+> **文档标识**：`RFC-BASE-JEV-ONNX-DUAL-HEAD-V2`  
+> **优先级**：P1（架构自包含解耦必修项）  
+> **涉及仓库**：`C:\dev\Base-Jev`（模型工厂） ➔ `C:\dev\Invar`（作战执行端）  
+> **关联发现**：2026-09-22 法医级源码审计确认
+
+---
+
+## 1. 核心背景与技术债务根因（Root Cause）
+
+### 1.1 现状与矛盾
+* **现象**：当前 `Invar` 进行 1,216 个端点推演时，必须切换到 `C:\dev\Base-Jev`，调用庞大且依赖 PyTorch/CUDA 的 `generate_triage_predictions.py`，无法单兵独立运行。
+* **根因**：虽然 `Base-Jev` 此前导出了单文件 `system_one_unified.onnx`（1.28 GB）并交付给了 Invar，**但该 ONNX 模型的计算图中遗漏了 `sensitivity_head`（敏感度头）的物理连通**！
+
+### 1.2 真实代码物证链
+1. **`C:\dev\Base-Jev\python\packages\core\src\decision_heads.py`**：
+   * 模型实际训练了两个独立的评分头：
+     ```python
+     self.impact_head = ScoreOrdinalHead(hidden_size, score_max_levels)      # 破坏力头
+     self.sensitivity_head = ScoreOrdinalHead(hidden_size, score_max_levels) # 敏感度头
+     self.score_head = self.impact_head  # 默认回退别名
+     ```
+   * 其统一方法 `forward_score` 写死只调用了破坏力头：
+     ```python
+     def forward_score(self, q_hidden, active_levels=None):
+         return self.impact_head(q_hidden, active_levels)  # 遗漏了 sensitivity_head！
+     ```
+2. **`C:\dev\Base-Jev\python\packages\core\src\onnx_export_wrapper.py`**：
+   * ONNX 导出包装器只设计了单个评分输入 `score_q_pos`，且只调用了 `forward_score`：
+     ```python
+     score_q_vecs = torch.index_select(seq_hidden, 0, score_q_pos)
+     _, score_dist, score_expected = self.heads.forward_score(score_q_vecs)
+     return choice_probs, bool_probs, score_dist, score_expected
+     ```
+3. **`C:\dev\Base-Jev\models\invar-intent-0.6b-v1\system_one_unified.onnx`**：
+   * 实测导出的输出节点仅有 4 个：`choice_probs`, `bool_probs`, `score_dist`, `score_expected`。
+   * **`sensitivity_head` 在导出阶段被 ONNX 常数折叠判定为无输出分支的死代码，未参与计算图构建！**
+4. **历史临时妥协**：
+   * 开发者因此在 `generate_triage_predictions.py` 中绕过了 ONNX，直接用 PyTorch 分别执行：
+     ```python
+     _, imp_dist, imp_exp = model.heads.forward_impact(q_imp)
+     _, sens_dist, sens_exp = model.heads.forward_sensitivity(q_sens)
+     ```
+   * 这直接导致 Invar 无法在没有 PyTorch 的情况下通过现存 ONNX 获得真实的敏感度分数。
+
+---
+
+## 2. 目标架构与改造蓝图
+
+改造完成后，系统应达到如下状态：
+
+```text
+[Base-Jev 模型工坊]
+   └─ 更新 onnx_export_wrapper.py (同时连接 impact_head 与 sensitivity_head)
+   └─ 重新执行 export_to_onnx.py
+   └─ 产出真正具备双打分输出的: system_one_dual_v2.onnx
+           │
+           ▼ 📦 单次打包发货 (交付一次，永久解耦)
+[Invar 独立作战引擎]
+   ├─ models/invar-intent-0.6b-v2/ (包含 v2 ONNX + tokenizer.json)
+   ├─ 引入轻量依赖: onnxruntime-directml + tokenizers (完全不装 PyTorch)
+   └─ 仓内原生推演脚本: scripts/data/pipeline/predict_triage_onnx.py
+```
+
+---
+
+## 3. 详细改造实施步骤（Action Items）
+
+### 第一步：修改 `Base-Jev` 的 ONNX 导出包装器
+* **目标文件**：`C:\dev\Base-Jev\python\packages\core\src\onnx_export_wrapper.py`
+* **改动点**：
+  在输入中区分（或顺序解构）破坏力与敏感度的问题锚点，同时调用两个独立的打分头，并导出双输出：
+  ```python
+  # 修改前:
+  def forward(self, input_ids, attention_mask, choice_q_pos, choice_cand_pos, choice_mask, bool_q_pos, score_q_pos):
+      ...
+      _, score_dist, score_expected = self.heads.forward_score(score_q_vecs)
+      return choice_probs, bool_probs, score_dist, score_expected
+
+  # 修改后方案 (推荐：明确分离两只物理头):
+  def forward(
+      self,
+      input_ids: torch.Tensor,
+      attention_mask: torch.Tensor,
+      choice_q_pos: torch.Tensor,
+      choice_cand_pos: torch.Tensor,
+      choice_mask: torch.Tensor,
+      bool_q_pos: torch.Tensor,
+      impact_q_pos: torch.Tensor,       # (num_impact_queries,)
+      sensitivity_q_pos: torch.Tensor,  # (num_sens_queries,)
+  ):
+      ...
+      # 汇聚破坏力特征向量并推演
+      imp_q_vecs = torch.index_select(seq_hidden, 0, impact_q_pos)
+      _, imp_dist, imp_expected = self.heads.forward_impact(imp_q_vecs)
+      
+      # 汇聚敏感度特征向量并推演
+      sens_q_vecs = torch.index_select(seq_hidden, 0, sensitivity_q_pos)
+      _, sens_dist, sens_expected = self.heads.forward_sensitivity(sens_q_vecs)
+      
+      return choice_probs, bool_probs, imp_dist, imp_expected, sens_dist, sens_expected
+  ```
+
+### 第二步：修改 `export_to_onnx.py` 导出脚本
+* **目标文件**：`C:\dev\Base-Jev\python\scripts\export_to_onnx.py`
+* **改动点**：
+  1. 更新 `dummy_inputs`，增加 `dummy_impact_q_pos` 与 `dummy_sensitivity_q_pos`；
+  2. 更新 `output_names` 为：
+     ```python
+     output_names = [
+         "choice_probs",
+         "bool_probs",
+         "impact_dist",
+         "impact_expected",
+         "sensitivity_dist",
+         "sensitivity_expected",
+     ]
+     ```
+  3. 更新 `dynamic_axes`，为 `impact_*` 和 `sensitivity_*` 设置动态维度；
+  4. 重新编译生成 `system_one_dual_v2.onnx`。
+
+### 第三步：更新 Rust 质检引擎（`base-jev-qa`）
+* **目标文件**：`C:\dev\Base-Jev\crates\core\src\engine.rs`
+* **改动点**：
+  在 `ort` 推理调用中，解构并断言 `impact_expected` 与 `sensitivity_expected` 两个输出切片，重新运行 `cargo test` 与硬件基准，签发 `MODEL_PASSPORT.json` (v2.0.0)。
+
+### 第四步：交付物同步至 Invar
+1. 将产物覆盖/新增至：`C:\dev\Invar\models\invar-intent-0.6b-v2\`；
+2. 在 `Invar/python/pyproject.toml` 中添加纯轻量依赖：
+   ```toml
+   dependencies = [
+       ...
+       "onnxruntime-directml>=1.18.0",
+       "tokenizers>=0.19.0",
+       "numpy>=1.26.0,<2.0.0",
+   ]
+   ```
+3. 在 Invar 仓内落地纯基于 ONNX 的推理脚本：
+   `C:\dev\Invar\scripts\data\pipeline\predict_triage_onnx.py`。
+   * 完全使用 HuggingFace Fast `tokenizers` 库读取 `tokenizer.json`；
+   * 完全使用 `onnxruntime` 喂入输入张量；
+   * **彻底删除对 `Base-Jev` 的一切路径关联，实现 100% 独立单兵作战！**
+
+---
+
+## 4. 验收基准（Acceptance Criteria）
+
+未来启动该 TODO 时，必须满足以下测试全部通过方准结项：
+1. **张量探针验收**：通过 `onnx.load` 探查新的 ONNX 模型，必须能明确看到 `impact_expected` 与 `sensitivity_expected` 输出张量；
+2. **精度等价性对账（Parity Check）**：
+   抽取 100 个历史 API 端点，分别用 PyTorch 源码推演与纯 ONNX v2 推演：
+   $$\max | \text{Score}_{\text{PyTorch}} - \text{Score}_{\text{ONNX}} | < 10^{-3}$$
+   确保浮点误差在 FP16 正常范围内，分值无漂移；
+3. **独立性验收**：
+   在完全不挂载 `C:\dev\Base-Jev`、完全不导入 `torch` 的纯净环境下，在 `Invar` 内部单命令完成 1,216 个端点的完整推演并成功输出合规 JSONL。
+
+---
+
+## 5. 当前实操决议（Status Quo Agreement）
+
+* **决定**：当前 Run-001 Genesis 实验**先不中断**。
+* **依据**：因为刚才我们在 `Base-Jev` 中运行的 PyTorch 脚本，正是真正调用了双头完整逻辑的推演，所产出的 `C:\dev\Invar\tmp\base_jev_predictions_1216.jsonl` 与装配出的 78 个靶标数据绝对真实有效。
+* **操作**：将本文档封存，当前主线继续全力推进 **Invar System-2 动态实证与沙箱发包**！
