@@ -2,21 +2,18 @@ use std::fs::{self, File};
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
-
 use anyhow::{bail, Result};
 use clap::Parser;
 use sha2::{Digest, Sha256};
-
 use base_jev_core::{
     DirectMLEngine, ModelPassport, PassportArtifacts, PassportBenchmarks, PassportMetrics, ProductionRecipe,
 };
 
 #[derive(Parser, Debug)]
-#[command(author, version, about = "base-jev 纯 Rust 原生硬件质检雷达")]
+#[command(author, version, about = "base-jev 纯 Rust 原生硬件质检雷达 (真·双正交头版)")]
 struct CliArgs {
     #[arg(short, long, default_value = "configs/profiles/recipe_invar_0.6b.json")]
     recipe: String,
-
     #[arg(short, long, default_value_t = 50)]
     iterations: usize,
 }
@@ -36,18 +33,19 @@ fn compute_sha256(path: &Path) -> Result<String> {
 }
 
 fn find_project_root() -> PathBuf {
-    let mut curr = std::env::current_dir().unwrap();
+    let curr = std::env::current_dir().unwrap();
+    let mut probe = curr.clone();
     for _ in 0..5 {
-        if (curr.join("configs").is_dir() || curr.join("recipes").is_dir()) && curr.join("models").is_dir() {
-            return curr;
+        if (probe.join("configs").is_dir() || probe.join("recipes").is_dir()) && probe.join("models").is_dir() {
+            return probe;
         }
-        if let Some(parent) = curr.parent() {
-            curr = parent.to_path_buf();
+        if let Some(parent) = probe.parent() {
+            probe = parent.to_path_buf();
         } else {
             break;
         }
     }
-    std::env::current_dir().unwrap()
+    curr
 }
 
 fn main() -> Result<()> {
@@ -75,6 +73,7 @@ fn main() -> Result<()> {
     if !onnx_path.is_file() {
         bail!("ONNX 静态计算图文件不存在: {}", onnx_path.display());
     }
+
     let onnx_bytes = fs::metadata(&onnx_path)?.len();
     let data_bytes = if data_path.is_file() {
         fs::metadata(&data_path)?.len()
@@ -105,19 +104,20 @@ fn main() -> Result<()> {
     }
     println!(" [✓] 流水线预热就绪");
 
-    println!("\n[阶段 3/4] 执行稳态延迟基准测试与 3 大生死红线质检 ({} 轮)...", args.iterations);
+    println!("\n[阶段 3/4] 执行稳态延迟基准测试与 4 大生死红线质检 ({} 轮)...", args.iterations);
     let mut latencies_ms: Vec<f32> = Vec::with_capacity(args.iterations);
     let mut last_choice_sum = 0.0f32;
-    let mut last_expected_score = 0.0f32;
+    let mut last_impact_score = 0.0f32;
+    let mut last_sens_score = 0.0f32;
 
     for _ in 0..args.iterations {
         let t0 = Instant::now();
-        let (choice_sum, score_exp) = engine.run_step()?;
+        let (choice_sum, imp_exp, sens_exp) = engine.run_step()?;
         let elapsed = t0.elapsed().as_secs_f32() * 1000.0;
-        
         latencies_ms.push(elapsed);
         last_choice_sum = choice_sum;
-        last_expected_score = score_exp;
+        last_impact_score = imp_exp;
+        last_sens_score = sens_exp;
     }
 
     latencies_ms.sort_by(|a, b| a.partial_cmp(b).unwrap());
@@ -129,11 +129,11 @@ fn main() -> Result<()> {
     println!("  ├─ 中位数延迟 (P50)        : {:.2} ms", p50_latency);
     println!("  ├─ 极端尾部延迟 (P99)      : {:.2} ms", p99_latency);
     println!("  ├─ Choice 选项概率和       : {:.4} (红线要求: 1.0 ± 0.01)", last_choice_sum);
-    println!("  └─ Score 期望打分分值      : {:.2} (红线要求: [1.0, 5.0])", last_expected_score);
+    println!("  ├─ Impact 期望破坏力分值   : {:.2} (红线要求: [1.0, 5.0])", last_impact_score);
+    println!("  └─ Sensitivity 期望敏感度 : {:.2} (红线要求: [1.0, 5.0])", last_sens_score);
 
     print!("\n  >>> 质检结论断言: ");
     let mut gates_passed = true;
-
     if mean_latency > 45.0 {
         println!("\n  [❌ 质检拦截] 稳态延迟 ({:.2} ms) 超过了法定 45.0 ms 红线！", mean_latency);
         gates_passed = false;
@@ -142,17 +142,20 @@ fn main() -> Result<()> {
         println!("\n  [❌ 质检拦截] 概率和 ({:.4}) 违背数学归一化公理！", last_choice_sum);
         gates_passed = false;
     }
-    if last_expected_score < 1.0 || last_expected_score > 5.0 {
-        println!("\n  [❌ 质检拦截] 期望分值 ({:.2}) 超出 1~5 范围！", last_expected_score);
+    if last_impact_score < 1.0 || last_impact_score > 5.0 {
+        println!("\n  [❌ 质检拦截] 破坏力分值 ({:.2}) 超出 1~5 范围！", last_impact_score);
+        gates_passed = false;
+    }
+    if last_sens_score < 1.0 || last_sens_score > 5.0 {
+        println!("\n  [❌ 质检拦截] 敏感度分值 ({:.2}) 超出 1~5 范围！", last_sens_score);
         gates_passed = false;
     }
 
     if !gates_passed {
         bail!("模型未能通过原生硬件出厂质检台，严禁签发护照与发货！");
     }
-    println!("✅ 3 大生死红线全量绿通！通过出厂验收！");
+    println!("✅ 4 大生死红线全量绿通！通过出厂验收！");
 
-    // 动态提取真实度量指标 (彻底杜绝硬编码静态伪造指标)
     let clean_backbone = Path::new(&recipe.backbone.model_id).file_name().unwrap_or_default().to_string_lossy();
     let metrics_file = project_root.join("models").join(format!("{}-SystemOne-Invar", clean_backbone)).join("eval_metrics.json");
 
@@ -181,17 +184,23 @@ fn main() -> Result<()> {
     fs::create_dir_all(&dist_dir)?;
 
     let passport = ModelPassport {
-        passport_version: "v1.0.0".to_string(),
+        passport_version: "v2.0.0".to_string(),
         model_uuid: format!("uuid-{}", &model_sha256[..12]),
         product_name: recipe.product_name.clone(),
         recipe_id: recipe.recipe_id.clone(),
         created_at: chrono::Utc::now().to_rfc3339(),
         sha256: model_sha256,
         file_size_bytes: (onnx_bytes + data_bytes),
-        primitives: vec!["Choice".to_string(), "Boolean".to_string(), "Score".to_string(), "DualScore".to_string()],
+        primitives: vec![
+            "Choice".to_string(),
+            "Boolean".to_string(),
+            "ImpactScore".to_string(),
+            "SensitivityScore".to_string(),
+            "DualScore".to_string(),
+        ],
         metrics: passport_metrics,
         benchmarks: PassportBenchmarks {
-            device_name: "NVIDIA GeForce RTX 3060 (12GB)".to_string(),
+            device_name: "DirectML TensorCore Hardware".to_string(),
             runtime: "DirectML (Direct3D 12)".to_string(),
             steady_latency_ms: mean_latency,
             p99_latency_ms: p99_latency,
@@ -221,14 +230,11 @@ fn main() -> Result<()> {
     fs::write(project_root.join("models").join("MODEL_PASSPORT.json"), &passport_json)?;
 
     println!("\n{}", "=".repeat(75));
-    println!(" 🎉 base-jev 0.6B 轻量模型出厂护照正式签发！质检验收通过！");
+    println!(" 🎉 base-jev 0.6B 真·双正交头模型出厂护照正式签发！质检验收通过！");
     println!(" 📄 交付出厂目录 : {}", dist_dir.display());
-    println!(" 📄 实测稳态延迟 : {:.2} ms (RTX 3060 DirectML)", mean_latency);
+    println!(" 📄 实测稳态延迟 : {:.2} ms (DirectML)", mean_latency);
     println!(" 📄 出厂护照文件 : {}", dist_dir.join("MODEL_PASSPORT.json").display());
     println!("{}", "=".repeat(75));
 
     Ok(())
 }
-
-
-

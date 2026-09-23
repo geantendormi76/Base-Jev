@@ -67,7 +67,6 @@
     "package.json",
     "pnpm-workspace.yaml",
     "rust-toolchain.toml",
-    ".github/workflows/**/*",
 
     // Rust 引擎
     "crates/**/Cargo.toml",
@@ -84,17 +83,11 @@
     "python/tests/test_*.py",
 
     // 数据流水线与活跃调度工具
-    "scripts/data/pipeline/**/*",
-    "scripts/data/asset/**/*",
+    "scripts/**/*.py",
     "python/scripts/*.py",
-    "scripts/audit/*.py",
 
     // 配置与规格
-    "configs/base/**/*",
-    "configs/profiles/**/*",
-    "configs/schemas/**/*",
-    "configs/registry/**/*",
-    "models/**/MODEL_PASSPORT.json",
+    "configs/**/*",
     "docs/ai/*.md"
   ],
 
