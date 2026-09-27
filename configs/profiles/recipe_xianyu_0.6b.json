@@ -1,0 +1,42 @@
+{
+  "recipe_id": "xianyu-hardware-0.6b-v1",
+  "product_name": "Xianyu GPU Fair-Price & Risk Reflex Engine (0.6B NanoJev Native)",
+  "domain": "ecommerce-hardware-valuation",
+  "backbone": {
+    "model_id": "models/Qwen3-0.6B-Base",
+    "hidden_size": 1024,
+    "max_seq_len": 2048
+  },
+  "heads": {
+    "choice_enabled": true,
+    "choice_projection_dim": 256,
+    "temperature": 0.1,
+    "boolean_enabled": true,
+    "score_enabled": true,
+    "score_max_levels": 5
+  },
+  "training": {
+    "learning_rate": 0.0002,
+    "epochs": 6,
+    "batch_size": 1,
+    "gradient_accumulation_steps": 4,
+    "lora_r": 16,
+    "lora_alpha": 32,
+    "lora_dropout": 0.05,
+    "max_grad_norm": 1.0,
+    "loss_weights": {
+      "soft_ce": 1.0,
+      "brier": 0.5,
+      "entropy": 0.25
+    },
+    "ambiguity_anchor_ratio": 0.125
+  },
+  "datasets": {
+    "train_path": "data/xianyu_hardware/distilled_xianyu_train.jsonl",
+    "eval_path": "data/xianyu_hardware/distilled_xianyu_eval.jsonl"
+  },
+  "export": {
+    "precision": "FP16",
+    "output_filename": "system_one_unified.onnx"
+  }
+}

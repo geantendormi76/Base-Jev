@@ -173,7 +173,7 @@ def main() -> None:
     parser.add_argument(
         "--recipe",
         type=str,
-        default="configs/profiles/recipe_invar_0.6b.json",
+        required=True,
         help="生产订单配方路径",
     )
     parser.add_argument(
@@ -204,7 +204,7 @@ def main() -> None:
     ckpt_dir = (
         Path(args.checkpoint)
         if args.checkpoint
-        else (PROJECT_ROOT / "models" / f"{clean_backbone}-SystemOne-Invar")
+        else (PROJECT_ROOT / "models" / f"{clean_backbone}-SystemOne-{recipe.recipe_id}")
     )
     base_dir = (
         Path(args.base_model)

@@ -2,7 +2,7 @@ import sys
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-AUDIT_SCRIPT_DIR = PROJECT_ROOT / "scripts" / "audit"
+AUDIT_SCRIPT_DIR = PROJECT_ROOT / "python" / "scripts" / "audit"
 PYTHON_SRC_DIR = PROJECT_ROOT / "python" / "packages" / "core" / "src"
 MODEL_DIR = PROJECT_ROOT / "models" / "Qwen3-1.7B-Base"
 

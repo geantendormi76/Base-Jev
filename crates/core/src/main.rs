@@ -12,7 +12,7 @@ use base_jev_core::{
 #[derive(Parser, Debug)]
 #[command(author, version, about = "base-jev 纯 Rust 原生硬件质检雷达 (真·双正交头版)")]
 struct CliArgs {
-    #[arg(short, long, default_value = "configs/profiles/recipe_invar_0.6b.json")]
+    #[arg(short, long, help = "生产配方 JSON 路径 (严格显式指定)")]
     recipe: String,
     #[arg(short, long, default_value_t = 50)]
     iterations: usize,
@@ -157,7 +157,8 @@ fn main() -> Result<()> {
     println!("✅ 4 大生死红线全量绿通！通过出厂验收！");
 
     let clean_backbone = Path::new(&recipe.backbone.model_id).file_name().unwrap_or_default().to_string_lossy();
-    let metrics_file = project_root.join("models").join(format!("{}-SystemOne-Invar", clean_backbone)).join("eval_metrics.json");
+    let ckpt_dir = project_root.join("models").join(format!("{}-SystemOne-{}", clean_backbone, recipe.recipe_id));
+    let metrics_file = ckpt_dir.join("eval_metrics.json");
 
     let passport_metrics = if metrics_file.is_file() {
         let raw_m = fs::read_to_string(&metrics_file)?;
@@ -219,7 +220,7 @@ fn main() -> Result<()> {
         fs::copy(&data_path, dist_dir.join(format!("{}.data", &recipe.export.output_filename)))?;
     }
 
-    let src_tok = project_root.join("models").join(format!("{}-SystemOne-Invar", clean_backbone)).join("tokenizer.json");
+    let src_tok = ckpt_dir.join("tokenizer.json");
     if src_tok.is_file() {
         fs::copy(&src_tok, dist_dir.join("tokenizer.json"))?;
         println!("  [✓] 已复制专有分词器配置: {}", src_tok.file_name().unwrap().to_string_lossy());

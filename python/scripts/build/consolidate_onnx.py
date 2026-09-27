@@ -1,7 +1,7 @@
 import sys
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
 MODELS_DIR = PROJECT_ROOT / "models"
 ONNX_FILE = MODELS_DIR / "system_one_unified.onnx"
 TARGET_DATA_NAME = "system_one_unified.onnx.data"

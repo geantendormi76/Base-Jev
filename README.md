@@ -1,49 +1,59 @@
-# base-jev (System-1 Cognitive Reflex Model Factory)
+An AI engineering monorepo for research, inference, agents, training, data processing,
+desktop applications and systems software.
 
-> 工业级纯判别式 System-1 决策模型工厂与 DirectML TensorCore 端侧推理引擎。
-> 属于 Invar 双引擎系统中的认知快反射前端（~23ms 稳态延迟）。
+## Repository map
 
----
+| Path | Responsibility | Lifecycle |
+|---|---|---|
+| `apps/` | shippable applications / entry points | product |
+| `crates/` | reusable Rust engines and domain modules | source |
+| `python/` | uv-managed Python workspace | source |
+| `configs/` | configuration injection and registries | declarative |
+| `data/` | datasets and transformed inputs | data |
+| `models/` | model metadata, weights, adapters and caches | large / external |
+| `artifacts/` | intentional outputs and reports | generated |
+| `docs/` | architecture, research and AI handoff | durable knowledge |
+| `tools/` | developer tooling | tooling |
+| `tmp/` | disposable workspace | ephemeral |
 
-### 1. 工程边界导览 (Directory Map)
-- **apps 在哪里？** -> `apps/desktop/`（未来桌面客户端拓展边界）
-- **Rust 在哪里？** -> `crates/core/`（包含 DirectML 运行时与 `base-jev-qa` 硬件质检工具）
-- **Python 在哪里？** -> `python/packages/core/`（核心决策头、因果偏序打包器、联合损失函数）
-- **configs 在哪里？** -> `configs/profiles/`（生产配方如 `recipe_invar_0.6b.json`）
-- **models 在哪里？** -> `models/`（基模底座、检查点适配器、ONNX 静态计算图）
-- **data 在哪里？** -> `data/`（蒸馏与微调数据集）
-- **runs 在哪里？** -> `runs/`（瞬时训练运行日志）
-- **artifacts 在哪里？** -> `artifacts/exports/` 与 `dist/`（出厂护照与发布级资产包）
-- **tests 在哪里？** -> `python/tests/` 与 `crates/core/tests/`
-- **docs 在哪里？** -> `docs/ai/`、`docs/architecture/`、`docs/research/`
-- **AI 上下文在哪里？** -> `docs/ai/HANDOFF.md`（唯一事实源）、`docs/ai/REPOSITORY_CLOSURE.md`
+## Core commands
 
-### 2. 如何运行与开发 (Quickstart)
-- **Python 环境就绪**：
-  ```powershell
-  cd python
-  uv sync
-  ```
-- **微调点火训练**：
-  ```powershell
-  uv run python python/scripts/train_factory_model.py --recipe configs/profiles/recipe_invar_0.6b.json
-  ```
-- **导出单文件静态图 ONNX**：
-  ```powershell
-  uv run python python/scripts/export_to_onnx.py --recipe configs/profiles/recipe_invar_0.6b.json
-  ```
-- **Rust 硬件出厂质检**：
-  ```powershell
-  cargo run --bin base-jev-qa
-  ```
+Rust workspace:
 
-### 3. 如何执行全量测试 (Verification)
-- **Rust 契约测试**：
-  ```powershell
-  cargo test --workspace
-  ```
-- **Python 单元测试**：
-  ```powershell
-  cd python
-  uv run pytest
-  ```
+```text
+cargo check --workspace
+cargo test --workspace
+```
+
+Frontend / Tauri:
+
+```text
+pnpm install
+pnpm desktop:dev
+pnpm desktop:build
+```
+
+Python workspace:
+
+```text
+cd python
+uv sync
+uv run pytest
+```
+
+AI context packaging:
+
+```text
+npx repomix -c tools/repomix/1_.json
+```
+
+The resulting context bundle is disposable and belongs under `tmp/repomix/`.
+
+## Configuration contract
+
+Configuration is layered as:
+
+`base -> profile -> local -> environment -> CLI`
+
+Backend/model/provider selection belongs in `configs/registry/` and should be connected
+to stable adapters rather than implementation-specific branching in orchestration code.

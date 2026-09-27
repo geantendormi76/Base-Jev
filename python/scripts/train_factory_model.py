@@ -98,7 +98,7 @@ def evaluate_model_detailed(trainer: FactoryTrainer, eval_loader: DataLoader) ->
 
 def main():
     parser = argparse.ArgumentParser(description="base-jev 通用 System 1 模型微调与真实度量流水线")
-    parser.add_argument("--recipe", default="configs/profiles/recipe_invar_0.6b.json", help="生产配方 JSON 路径")
+    parser.add_argument("--recipe", type=str, required=True, help="生产配方 JSON 相对或绝对路径 (严格显式指定)")
     args = parser.parse_args()
 
     start_total_time = time.perf_counter()
@@ -170,7 +170,7 @@ def main():
         print(f"  ├─ Epoch [{epoch}/{recipe.training.epochs}] | 训练 Loss: {train_loss:.4f} | 评估 Loss: {final_metrics['eval_loss']:.4f} | Brier: {final_metrics['brier_score']:.4f} | 耗时: {epoch_elapsed:.2f}s")
 
     clean_backbone = Path(recipe.backbone.model_id).name
-    output_checkpoint_dir = PROJECT_ROOT / "models" / f"{clean_backbone}-SystemOne-Invar"
+    output_checkpoint_dir = PROJECT_ROOT / "models" / f"{clean_backbone}-SystemOne-{recipe.recipe_id}"
     print(f"\n[阶段 4/4] 正在保存物理双头适配器权重与真·评测指标至: {output_checkpoint_dir} ...")
     trainer.save_checkpoint(output_checkpoint_dir)
     

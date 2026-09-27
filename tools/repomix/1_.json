@@ -2,12 +2,7 @@
   "$schema": "https://repomix.com/schemas/latest/schema.json",
 
   // ============================================================
-  // Invar AI 跨会话工程交接配置 v2.1 (Tree-sitter 骨架分层压缩版)
-  //
-  // 核心策略：
-  //   1. 核心业务源码 (harness/agent/Rust) + 规范：保留完整实现 (Full Content)
-  //   2. 庞大测试套件 (tests/) + 历史数据脚本：Tree-sitter 提取签名骨架 (compress: true)
-  //   3. 极大降低交接文件体积 (从 681 KB 削减至 200 KB 左右)，Token 节省 ~70%
+  // Invar AI 跨会话工程交接配置 v2.3 (支持配置与量规完整提取版)
   // ============================================================
 
   "input": {
@@ -21,25 +16,26 @@
     "compress": false,
 
     // ==========================================================
-    // 逐文件分层过滤规则 (第一条匹配生效，精确调控骨架 vs 全文)
+    // 逐文件分层过滤规则 (第一条优先匹配生效)
     // ==========================================================
     "patterns": [
-      // 1. 庞大测试套件：只提取函数名、类名与签名骨架，剔除内部测试实现细节
-      { "pattern": "python/tests/**/*", "compress": true },
-      { "pattern": "crates/**/tests/**/*", "compress": true },
+      // 1. 庞大测试套件：只提取函数名、类名与签名骨架
+      { "pattern": "**/tests/**/*", "compress": true },
+      { "pattern": "**/test_*.py", "compress": true },
 
-      // 2. 历史数据脚本与辅助工具：仅保留类与函数骨架
-      { "pattern": "scripts/**/*", "compress": true },
-      { "pattern": "python/scripts/*.py", "compress": true },
+      // 2. 历史数据脚本与辅助工具：仅保留骨架
+      //       // { "pattern": "python/scripts/**/*", "compress": true },
 
-      // 3. 核心生产源码与架构文档：不压缩，保持 100% 完整实现 (未标 compress 即为全文)
-      { "pattern": "python/packages/core/src/**/*" },
-      { "pattern": "crates/**/src/**/*" },
+      // 3. 核心生产源码、架构文档与配置量规：不压缩，100% 完整保留
+      { "pattern": "python/packages/**/*" },
+      { "pattern": "crates/**/*" },
+      { "pattern": "apps/**/*" },
+      { "pattern": "configs/**/*" },
       { "pattern": "HANDOFF.md" },
-      { "pattern": "docs/ai/*.md" }
+      { "pattern": "docs/**/*.md" }
     ],
 
-    "headerText": "本文件是 Invar 跨会话工程交接包 (分层骨架优化版)。核心源码与规范保留完整实现；测试用例与历史脚本采用 Tree-sitter 提取签名骨架以大幅节省 Token。未收录文件通过目录树索引。实际修改前以仓库当前源码与测试为准。",
+    "headerText": "本文件是当前项目跨会话工程交接包 (分层骨架优化版)。核心源码与规范保留完整实现；测试用例与历史脚本采用 Tree-sitter 提取签名骨架以大幅节省 Token。未收录文件通过目录树索引。实际修改前以仓库当前源码与测试为准。",
 
     "fileSummary": true,
     "directoryStructure": true,
@@ -59,6 +55,9 @@
     }
   },
 
+  // ==========================================================
+  // 通用包含规则：去重并精准覆盖
+  // ==========================================================
   "include": [
     "HANDOFF.md",
     "README.md",
@@ -67,30 +66,16 @@
     "package.json",
     "pnpm-workspace.yaml",
     "rust-toolchain.toml",
-
-    // Rust 引擎
-    "crates/**/Cargo.toml",
-    "crates/**/src/**/*",
-    "crates/**/tests/**/*",
-
-    // Python 核心服务
-    "python/pyproject.toml",
-    "python/.python-version",
-    "python/packages/**/pyproject.toml",
-    "python/packages/**/src/**/*",
-
-    // Python 测试 (自动匹配)
-    "python/tests/test_*.py",
-
-    // 数据流水线与活跃调度工具
-    "scripts/**/*.py",
-    "python/scripts/*.py",
-
-    // 配置与规格
+    "crates/**/*",
+    "apps/**/*",
     "configs/**/*",
-    "docs/ai/*.md"
+    "python/**/*",
+    "docs/**/*"
   ],
 
+  // ==========================================================
+  // 严格安全与噪音物理隔离清单
+  // ==========================================================
   "ignore": {
     "useGitignore": true,
     "useDotIgnore": true,

@@ -3,7 +3,7 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 PYTHON_SRC = PROJECT_ROOT / "python" / "packages" / "core" / "src"
-PIPELINE_SRC = PROJECT_ROOT / "scripts" / "data"
+PIPELINE_SRC = PROJECT_ROOT / "python" / "scripts" / "data"
 
 for p in [PYTHON_SRC, PIPELINE_SRC]:
     if str(p) not in sys.path:
