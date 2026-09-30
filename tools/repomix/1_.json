@@ -1,172 +1,67 @@
 {
-  "$schema": "https://repomix.com/schemas/latest/schema.json",
-
-  // ============================================================
-  // Invar AI 跨会话工程交接配置 v2.3 (支持配置与量规完整提取版)
-  // ============================================================
-
-  "input": {
-    "maxFileSize": 2000000
-  },
-
-  "output": {
-    "filePath": "tmp/repomix/project-handoff.xml",
-    "filePathStyle": "target-relative",
-    "style": "xml",
-    "compress": false,
-
-    // ==========================================================
-    // 逐文件分层过滤规则 (第一条优先匹配生效)
-    // ==========================================================
-    "patterns": [
-      // 1. 庞大测试套件：只提取函数名、类名与签名骨架
-      { "pattern": "**/tests/**/*", "compress": true },
-      { "pattern": "**/test_*.py", "compress": true },
-
-      // 2. 历史数据脚本与辅助工具：仅保留骨架
-      //       // { "pattern": "python/scripts/**/*", "compress": true },
-
-      // 3. 核心生产源码、架构文档与配置量规：不压缩，100% 完整保留
-      { "pattern": "python/packages/**/*" },
-      { "pattern": "crates/**/*" },
-      { "pattern": "apps/**/*" },
-      { "pattern": "configs/**/*" },
-      { "pattern": "HANDOFF.md" },
-      { "pattern": "docs/**/*.md" }
+    "$schema": "https://repomix.com/schemas/latest/schema.json",
+    "input": {
+        "maxFileSize": 2000000
+    },
+    "output": {
+        "filePath": "tmp/project-handoff.xml",
+        "filePathStyle": "target-relative",
+        "style": "xml",
+        "compress": false,
+        "patterns": [
+            { "pattern": "**/tests/**/*", "compress": true },
+            { "pattern": "**/test_*.py", "compress": true },
+            { "pattern": "node/**/tests/**/*", "compress": true },
+            { "pattern": "python/packages/**/*" },
+            { "pattern": "crates/**/*" },
+            { "pattern": "node/packages/**/*" },
+            { "pattern": "apps/**/*" },
+            { "pattern": "configs/**/*" },
+            { "pattern": "HANDOFF.md" },
+            { "pattern": "docs/ai/*.md" }
+        ],
+        "headerText": "本文件是当前项目跨会话工程交接包 (分层骨架优化版)。Rust/Python/Node 核心源码保留完整实现。",
+        "fileSummary": true,
+        "directoryStructure": true,
+        "includeFullDirectoryStructure": true,
+        "includeEmptyDirectories": false,
+        "files": true,
+        "removeComments": false,
+        "removeEmptyLines": true,
+        "showLineNumbers": false,
+        "truncateBase64": true
+    },
+    "include": [
+        "HANDOFF.md",
+        "README.md",
+        "Cargo.toml",
+        "package.json",
+        "pnpm-workspace.yaml",
+        "crates/**/*",
+        "python/**/*",
+        "node/**/*",
+        "apps/**/*",
+        "configs/**/*",
+        "docs/ai/*.md"
     ],
-
-    "headerText": "本文件是当前项目跨会话工程交接包 (分层骨架优化版)。核心源码与规范保留完整实现；测试用例与历史脚本采用 Tree-sitter 提取签名骨架以大幅节省 Token。未收录文件通过目录树索引。实际修改前以仓库当前源码与测试为准。",
-
-    "fileSummary": true,
-    "directoryStructure": true,
-    "includeFullDirectoryStructure": true,
-    "includeEmptyDirectories": false,
-    "files": true,
-    "removeComments": false,
-    "removeEmptyLines": true,
-    "showLineNumbers": false,
-    "truncateBase64": true,
-
-    "git": {
-      "sortByChanges": true,
-      "sortByChangesMaxCommits": 30,
-      "includeDiffs": false,
-      "includeLogs": false
+    "ignore": {
+        "useGitignore": true,
+        "useDotIgnore": true,
+        "useDefaultPatterns": true,
+        "customPatterns": [
+            "tmp/**",
+            "**/node_modules/**",
+            "**/dist/**",
+            "**/target/**",
+            "**/.venv/**",
+            "models/**",
+            "data/**"
+        ]
+    },
+    "security": {
+        "enableSecurityCheck": true
+    },
+    "tokenCount": {
+        "encoding": "o200k_base"
     }
-  },
-
-  // ==========================================================
-  // 通用包含规则：去重并精准覆盖
-  // ==========================================================
-  "include": [
-    "HANDOFF.md",
-    "README.md",
-    "pytest.ini",
-    "Cargo.toml",
-    "package.json",
-    "pnpm-workspace.yaml",
-    "rust-toolchain.toml",
-    "crates/**/*",
-    "apps/**/*",
-    "configs/**/*",
-    "python/**/*",
-    "docs/**/*"
-  ],
-
-  // ==========================================================
-  // 严格安全与噪音物理隔离清单
-  // ==========================================================
-  "ignore": {
-    "useGitignore": true,
-    "useDotIgnore": true,
-    "useDefaultPatterns": true,
-    "customPatterns": [
-      "tmp/repomix/**",
-      "**/repomix-output*.xml",
-      ".env",
-      ".env.*",
-      "**/.env",
-      "**/.env.*",
-      "**/*.pem",
-      "**/*.key",
-      "**/*.p12",
-      "**/*.pfx",
-      "**/secrets/**",
-      "**/*credentials*/**",
-      "models/**/*.onnx",
-      "models/**/*.gguf",
-      "models/**/*.safetensors",
-      "models/**/*.bin",
-      "models/**/*.pt",
-      "models/**/*.pth",
-      "models/**/*.ckpt",
-      "models/**/*.msgpack",
-      "models/checkpoints/**",
-      "models/cache/**",
-      "data/raw/**",
-      "data/interim/**",
-      "data/processed/**",
-      "data/**/*.csv",
-      "data/**/*.parquet",
-      "data/**/*.arrow",
-      "data/**/*.jsonl",
-      "data/**/*.sqlite",
-      "data/**/*.db",
-      "data/**/*.xlsx",
-      "runs/**/outputs/**",
-      "runs/**/artifacts/**",
-      "runs/**/checkpoints/**",
-      "runs/**/*.log",
-      "artifacts/packages/**",
-      "artifacts/exports/**",
-      "artifacts/**/*.zip",
-      "artifacts/**/*.tar.gz",
-      "**/node_modules/**",
-      "**/dist/**",
-      "**/dist-ssr/**",
-      "**/build/**",
-      "**/target/**",
-      "**/.venv/**",
-      "**/.uv/**",
-      "**/.uv_cache/**",
-      "**/__pycache__/**",
-      "**/*.pyc",
-      "**/*.pyo",
-      "**/.pytest_cache/**",
-      "**/.mypy_cache/**",
-      "**/.ruff_cache/**",
-      "**/.idea/**",
-      "**/.vscode/**",
-      "**/.DS_Store",
-      "**/Thumbs.db",
-      "**/*.exe",
-      "**/*.dll",
-      "**/*.so",
-      "**/*.dylib",
-      "**/*.lib",
-      "**/*.a",
-      "**/*.wasm",
-      "**/*.pdb",
-      "**/Cargo.lock",
-      "**/pnpm-lock.yaml",
-      "**/package-lock.json",
-      "**/yarn.lock",
-      "**/bun.lockb",
-      "**/uv.lock",
-      "**/poetry.lock",
-      "**/Pipfile.lock",
-      "**/coverage/**",
-      "**/.coverage",
-      "**/*.tmp",
-      "**/*.log"
-    ]
-  },
-
-  "security": {
-    "enableSecurityCheck": true
-  },
-
-  "tokenCount": {
-    "encoding": "o200k_base"
-  }
 }
