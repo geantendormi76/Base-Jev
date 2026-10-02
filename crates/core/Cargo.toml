@@ -19,11 +19,9 @@ tokenizers = { version = "0.20", default-features = false, features = ["onig"] }
 ort = { version = "2.0.0-rc.13", default-features = false, features = [
     "std",
     "ndarray",
-    "directml",
-    "download-binaries",
-    "copy-dylibs",
-    "tls-rustls",
-    "half"
+    "half",
+    "load-dynamic",
+    "cuda"
 ] }
 chrono = "0.4"
 sha2 = "0.10"

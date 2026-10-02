@@ -6,7 +6,7 @@ use anyhow::{bail, Result};
 use clap::Parser;
 use sha2::{Digest, Sha256};
 use base_jev_core::{
-    DirectMLEngine, ModelPassport, PassportArtifacts, PassportBenchmarks, PassportMetrics, ProductionRecipe,
+    CudaEngine, ModelPassport, PassportArtifacts, PassportBenchmarks, PassportMetrics, ProductionRecipe,
 };
 
 #[derive(Parser, Debug)]
@@ -53,7 +53,7 @@ fn main() -> Result<()> {
     let project_root = find_project_root();
 
     println!("{}", "=".repeat(75));
-    println!(" 🦀 base-jev: 工业级纯 Rust 原生硬件质检台 (DirectML TensorCore)");
+    println!(" 🦀 base-jev: 工业级纯 Rust 原生硬件质检台 (NVIDIA CUDA TensorCore (Linux Native))");
     println!(" Engine Version    : {}", base_jev_core::factory_version());
     println!(" Project Root      : {}", project_root.display());
     println!(" Production Recipe : {}", args.recipe);
@@ -94,9 +94,9 @@ fn main() -> Result<()> {
     let model_sha256 = compute_sha256(&onnx_path)?;
     println!(" [✓] {}", &model_sha256[..16]);
 
-    println!("\n[阶段 2/4] 初始化 DirectMLEngine 并预热流水线...");
-    let mut engine = DirectMLEngine::new(&onnx_path)?;
-    println!("  [✓] 成功打通 Direct3D 12 硬件加速通道！");
+    println!("\n[阶段 2/4] 初始化 CudaEngine 并预热流水线...");
+    let mut engine = CudaEngine::new(&onnx_path)?;
+    println!("  [✓] 成功打通 NVIDIA RTX 3060 CUDA TensorCore 硬件加速通道！");
 
     print!("  [*] 正在预热 GPU 着色器与指令流水线 (5 轮)...");
     for _ in 0..5 {
@@ -201,8 +201,8 @@ fn main() -> Result<()> {
         ],
         metrics: passport_metrics,
         benchmarks: PassportBenchmarks {
-            device_name: "DirectML TensorCore Hardware".to_string(),
-            runtime: "DirectML (Direct3D 12)".to_string(),
+            device_name: "NVIDIA CUDA TensorCore (Linux Native) Hardware".to_string(),
+            runtime: "NVIDIA CUDA TensorCore (Linux Native)".to_string(),
             steady_latency_ms: mean_latency,
             p99_latency_ms: p99_latency,
             vram_allocated_mb: total_mb as f32,
@@ -233,7 +233,7 @@ fn main() -> Result<()> {
     println!("\n{}", "=".repeat(75));
     println!(" 🎉 base-jev 0.6B 真·双正交头模型出厂护照正式签发！质检验收通过！");
     println!(" 📄 交付出厂目录 : {}", dist_dir.display());
-    println!(" 📄 实测稳态延迟 : {:.2} ms (DirectML)", mean_latency);
+    println!(" 📄 实测稳态延迟 : {:.2} ms (CUDA TensorCore)", mean_latency);
     println!(" 📄 出厂护照文件 : {}", dist_dir.join("MODEL_PASSPORT.json").display());
     println!("{}", "=".repeat(75));
 

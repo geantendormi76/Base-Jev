@@ -32,8 +32,8 @@
     "ambiguity_anchor_ratio": 0.15
   },
   "datasets": {
-    "train_path": "data/distilled_invar_train_dual_v2.jsonl",
-    "eval_path": "data/gold_replay_buffer_60.jsonl"
+    "train_path": "data/invar/distilled_invar_train_dual_v2.jsonl",
+    "eval_path": "data/invar/gold_replay_buffer_60.jsonl"
   },
   "export": {
     "precision": "FP16",

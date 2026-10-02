@@ -1,61 +1,53 @@
-# 🤝 AI Development Handoff Specification (开发会话交接档案)
+# AI Development Handoff Specification (开发会话交接档案)
 
 ## 0. Handoff Metadata
-- **文档版本**：`v3.2.0-gold-dataset-certified` `[FACT]`
-- **生成时间锚点**：2026-09-27 15:30:00 (UTC+9) `[FACT]`
-- **当前仓库根路径**：`C:\dev\Distiller` `[FACT]`
-- **上游数据源路径**：`C:\dev\crawl` (`PROJECT_ROOT.parent / "crawl"`) `[FACT]`
-- **理论规格与标准**：
-  - `TianyuCodings/NanoJev` / `browser-use/jev-ultrafast` (零 Token 解码单步前向推演体系) `[FACT]`
-  - `Alibaba Xianyu Team: LLP (LLM-Based Product Pricing in E-commerce, arXiv:2510.09347)` `[FACT]`
-  - `Prometheus 2 (EMNLP) & Argilla Distilabel` (外部声明式量规解耦与最大熵指数族平滑) `[FACT]`
-- **可复现性等级**：`FULLY REPRODUCIBLE` (Distiller 全量 19 个单元测试 100% 绿灯，出厂数据集通过代数归一化与终极争议样本实证双重验收) `[FACT]`
+- **文档版本**：`v4.1.0-invar-cuda-verified` `[FACT]`
+- **生成时间锚点**：2026-10-02 22:45:00 (UTC+8) `[FACT]`
+- **当前宿主操作系统**：Linux Mint 22.3 Cinnamon (x86_64, Kernel 6.8.0, 物理硬件宿主机) `[FACT]`
+- **核心计算硬件**：NVIDIA GeForce RTX 3060 (12GB VRAM, CUDA Compute Capability 8.6) `[FACT]`
+- **关键工程根目录**：
+  - 数据生产中枢：`/home/zhz/Distiller` `[FACT]`
+  - 模型制造工厂：`/home/zhz/Base-Jev` (当前工作目录) `[FACT]`
+  - 端侧落地服务：`/home/zhz/Invar` `[FACT]`
+- **文档唯一目标**：记录 Linux Mint 22.3 原生 CUDA 硬件加速打通、Rust 质检 7.85 ms 全量绿通、出厂护照正式签发的客观事实，支持后续业务无缝消费。`[DECISION]`
 
----
+## 1. Project Identity
+- **项目名称**：Base-Jev (System-1 神经认知决策模型工厂) `[FACT]`
+- **工程定位**：面向边缘端非自回归 (Non-Autoregressive) 毫秒级决策反射模型的高性能微调、图编译压铸与纯 Rust 原生出厂硬件质检台。`[FACT]`
+- **主技术栈**：
+  - Python 域：`Python 3.12` + `uv` (`torch 2.6.0+cu124`, `peft`, `onnxruntime-gpu 1.20.2`) `[FACT]`
+  - Rust 域：`Rust 2021` + `Cargo` (`ort 2.0.0-rc.13`, `tokenizers`, `clap`, `half`) `[FACT]`
+  - 底座模型：`Qwen/Qwen3-0.6B-Base` (Hidden Size: 1024, 16 Heads, 8 KV-Heads) `[FACT]`
 
-## 1. 核心技术升级与问题根治记录
-1. **彻底攻克长描述正文缺失痛点**：
-   - 协同上游 `crawl` 在无头模式下通过 `x5sec` 持久化与反自动化特征抹除，全量捕获卖家原始长描述正文 `description`；
-   - 在 `xianyu_synthesizer.py` 中将描述全量并入 `code_slice` 第二层，消除了“坏的坏的”、“电源线烧过”在标题被截断导致大模型误判的根本盲区。`[FACT]`
-2. **代码级经济规律前置硬守卫 (Deterministic Pre-guard)**：
-   - 基于资产价格天花板法则（$P < 1000$ 元或偏离度 $> 75\%$ 且含配件特征词），对纯配件、支架、水冷头直接定级为 Level 1；
-   - 52.2%（261条）确定性样本实现 **0ms 直通免调 API**，彻底杜绝大模型在明显配件上的幻觉，并将蒸馏耗时从 8500 秒压缩至 2575 秒！`[FACT]`
-3. **出厂质检大验收全绿**：
-   - 训练集 `distilled_xianyu_train.jsonl` (387 条) 与评估集 `distilled_xianyu_eval.jsonl` (97 条)：
-     - 概率归一化违例数：**0** `[FACT]`
-     - 期望值点积偏差数：**0** `[FACT]`
-     - 教师模型兜底均分率：**0/193 (Train) | 0/42 (Eval)** `[FACT]`
-   - 关键争议标的实测：微星 3090 死卡精准定级 `Sens: 4.95 / Impact: 1.50`，水冷头精准定级 `Impact: 1.05`，登山包与羽毛球拍确凿隔离！`[FACT]`
+## 2. Current Mission
+完成从 Windows 到 Linux Mint 22.3 迁移后 Invar 决策模型全链路重铸：
+Distiller (v2 纯多正交数据) ➔ Base-Jev (微调 & ONNX 压铸) ➔ base-jev-qa (Rust 出厂质检) ➔ Invar (业务消费)
+当前已在 Linux 原生 RTX 3060 硬件上跑通 `base-jev-qa`，实测稳态延迟 **7.85 ms**，突破 45.0 ms 红线，带数字印章的《模型出厂护照》`MODEL_PASSPORT.json` 已正式签发。`[FACT]`
 
----
+## 3. Current Objective
+**【当前状态：Phase 1 硬件质检已圆满竣工】**
+待办推进点：将 `artifacts/packages/invar-intent-0.6b-v2/` 标准交付三件套（`system_one_unified.onnx`, `tokenizer.json`, `MODEL_PASSPORT.json`）无缝交付至下游服务工程 `/home/zhz/Invar/models/`，并进行业务端到端推理闭环测试。`[FACT]`
 
-## 2. 最终交付资产清单
-- `artifacts/exports/distilled_xianyu_train.jsonl`：387 条出厂级标准训练集；
-- `artifacts/exports/distilled_xianyu_eval.jsonl`：97 条出厂级标准评估集（严格物理隔离）；
-- `configs/prompts/xianyu_hardware.yaml`：全要素因果评级量规规范。
+## 4. Last Known Good State
+- **时间锚点**：2026-10-02 22:42:00 (UTC+8) `[FACT]`
+- **硬件质检台 (Hardware Gate)**：
+  - 运行命令：`bash tools/run_qa.sh --recipe configs/profiles/recipe_invar_0.6b_v2.json --iterations 50`
+  - 稳态平均前向延迟：**`7.85 ms`** (P50: 7.82 ms, P99: 10.81 ms) `[FACT]`
+  - 四大生死红线断言：
+    - `mean_latency <= 45.0 ms`: **7.85 ms** (通过)
+    - `|choice_sum - 1.0| <= 0.01`: **0.9999** (通过)
+    - `1.0 <= impact_score <= 5.0`: **1.91** (通过)
+    - `1.0 <= sensitivity_score <= 5.0`: **1.99** (通过)
+- **交付产物**：
+  - 目录：`/home/zhz/Base-Jev/artifacts/packages/invar-intent-0.6b-v2/`
+  - 文件：`system_one_unified.onnx` (1251.12 MB, SHA-256: `1ff03dc66fd8...`), `tokenizer.json`, `MODEL_PASSPORT.json`。`[FACT]`
 
----
+## 5. Architectural Discoveries & Fixes
+1. **ONNX Runtime GPU 约束对齐**：`onnxruntime-gpu` 必须使用 `>=1.20.0,<1.21.0`，严格匹配 CUDA 12.x 与 cuDNN 9.x，杜绝拉入 CUDA 13 专用的 1.30.0。
+2. **动态库自动化穿透**：通过 `tools/run_qa.sh` 与 `tools/env_cuda.sh` 自动收集虚拟环境中的 12 个 NVIDIA 动态库路径并注入 `LD_LIBRARY_PATH` 与 `LD_PRELOAD`，彻底杜绝终端环境切换导致的库丢失。
+3. **图优化级别对齐**：`crates/core/src/engine.rs` 修正为官方标准支持的 `GraphOptimizationLevel::Level2`（扩展图优化），消除 `graph_optimization_level is not valid` 参数错误。
 
-## 3. 下一步路线 (Roadmap)
-- **阶段 M4 (即将启动)**：移交外部独立训练工程，读取上述两份 JSONL 数据集，启动 NanoJev 0.6B LoRA 微调，导出 23ms 前向推理引擎！`[TODO]`
-
-
-你现在接管【Invar / NanoJev 0.6B 决策模型微调训练工程】。
-数据策展与因果蒸馏中枢（Distiller）已经完成了出厂级数据生产与全量代数质检，准予点火训练！
-
-【上游出厂数据集物理路径】:
-• 训练集 (387条): C:\dev\Distiller\artifacts\exports\distilled_xianyu_train.jsonl
-• 评估集 (97条):  C:\dev\Distiller\artifacts\exports\distilled_xianyu_eval.jsonl
-• 提示量规:       C:\dev\Distiller\configs\prompts\xianyu_hardware.yaml
-
-【数据契约与训练架构规范】:
-1. 任务性质: 非自回归 (Non-Autoregressive) 双头因果决策与估值模型，单步前向推演 (目标耗时 23ms)；
-2. 输入特征: sample["code_slice"] (已包含 16 维数值特征、相对偏离度及卖家详细长描述)；
-3. 监督标签 (软标签分布):
-   - Impact (物理形态残值): target_scores.impact.distribution (5档归一化概率)
-   - Sensitivity (暗病欺诈闸门): target_scores.sensitivity.distribution (5档归一化概率)
-4. 损失函数: 基于 KL 散度 (KL-Divergence) 或 软交叉熵，拟合教师大模型平滑后的 5 档概率分布；
-5. 基座模型建议: Qwen2.5-0.5B (使用 LoRA 微调)；
-6. 交付目标: 完成微调、验证评估集收敛指标 (Eval Loss & 期望分偏差)，并导出单文件 ONNX / GGUF。
-
-请严格遵循系统工程宪法，读取训练集第一行样本确认数据契约，并提出你的第一单步工程计划！
+## 6. Roadmap
+- [x] **Phase 1 (已竣工)**：彻底打通 Linux 原生 RTX 3060 CUDA TensorCore 硬件加速，稳态延迟达 7.85 ms，突破生死红线质检并官方签发《模型出厂护照》。
+- [ ] **Phase 2 (下一步)**：将出厂标准三件套同步部署至下游工程 `/home/zhz/Invar/models/`。
+- [ ] **Phase 3 (最终验收)**：在 Invar 中执行业务端点前向推演测试，完成模型落地闭环。

@@ -9,5 +9,5 @@ runs = "runs"
 artifacts = "artifacts"
 
 [runtime]
-backend = "directml"
+backend = "cuda"
 execution = "local"
