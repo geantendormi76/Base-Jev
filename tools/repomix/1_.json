@@ -1,67 +1,65 @@
 {
-    "$schema": "https://repomix.com/schemas/latest/schema.json",
-    "input": {
-        "maxFileSize": 2000000
-    },
-    "output": {
-        "filePath": "tmp/project-handoff.xml",
-        "filePathStyle": "target-relative",
-        "style": "xml",
-        "compress": false,
-        "patterns": [
-            { "pattern": "**/tests/**/*", "compress": true },
-            { "pattern": "**/test_*.py", "compress": true },
-            { "pattern": "node/**/tests/**/*", "compress": true },
-            { "pattern": "python/packages/**/*" },
-            { "pattern": "crates/**/*" },
-            { "pattern": "node/packages/**/*" },
-            { "pattern": "apps/**/*" },
-            { "pattern": "configs/**/*" },
-            { "pattern": "HANDOFF.md" },
-            { "pattern": "docs/ai/*.md" }
-        ],
-        "headerText": "本文件是当前项目跨会话工程交接包 (分层骨架优化版)。Rust/Python/Node 核心源码保留完整实现。",
-        "fileSummary": true,
-        "directoryStructure": true,
-        "includeFullDirectoryStructure": true,
-        "includeEmptyDirectories": false,
-        "files": true,
-        "removeComments": false,
-        "removeEmptyLines": true,
-        "showLineNumbers": false,
-        "truncateBase64": true
-    },
-    "include": [
-        "HANDOFF.md",
-        "README.md",
-        "Cargo.toml",
-        "package.json",
-        "pnpm-workspace.yaml",
-        "crates/**/*",
-        "python/**/*",
-        "node/**/*",
-        "apps/**/*",
-        "configs/**/*",
-        "docs/ai/*.md"
+  "$schema": "https://repomix.com/schemas/latest/schema.json",
+  "input": {
+    "maxFileSize": 2000000
+  },
+  "output": {
+    "filePath": "tmp/repomix/project-handoff.xml",
+    "filePathStyle": "target-relative",
+    "style": "xml",
+    "compress": true,
+    "patterns": [
+      { "pattern": "HANDOFF.md", "compress": false },
+      { "pattern": "README.md", "compress": false },
+      { "pattern": "configs/**/*", "compress": false },
+      { "pattern": "**/Cargo.toml", "compress": false },
+      { "pattern": "**/pyproject.toml", "compress": false },
+      { "pattern": "**/package.json", "compress": false },
+      { "pattern": "docs/ai/*.md", "compress": false }
     ],
-    "ignore": {
-        "useGitignore": true,
-        "useDotIgnore": true,
-        "useDefaultPatterns": true,
-        "customPatterns": [
-            "tmp/**",
-            "**/node_modules/**",
-            "**/dist/**",
-            "**/target/**",
-            "**/.venv/**",
-            "models/**",
-            "data/**"
-        ]
-    },
-    "security": {
-        "enableSecurityCheck": true
-    },
-    "tokenCount": {
-        "encoding": "o200k_base"
-    }
+    "headerText": "【全局拓扑骨架交接包】本文件所有源码实现均经由 Tree-sitter 进行 AST 骨架提取（仅保留类、函数签名与类型接口，已剥离内部实现细节）。元配置、架构契约与 HANDOFF.md 保持完整。若后续针对具体模块实现有疑问，请直接给出 tools/context/inspect.sh 提取命令，由终端直接输出完整内容。",
+    "fileSummary": true,
+    "directoryStructure": true,
+    "includeFullDirectoryStructure": true,
+    "includeEmptyDirectories": false,
+    "files": true,
+    "removeComments": false,
+    "removeEmptyLines": true,
+    "showLineNumbers": false,
+    "truncateBase64": true
+  },
+  "include": [
+    "HANDOFF.md",
+    "README.md",
+    "Cargo.toml",
+    "package.json",
+    "pnpm-workspace.yaml",
+    "crates/**/*",
+    "python/**/*",
+    "node/**/*",
+    "apps/**/*",
+    "configs/**/*",
+    "docs/ai/*.md"
+  ],
+  "ignore": {
+    "useGitignore": true,
+    "useDotIgnore": true,
+    "useDefaultPatterns": true,
+    "customPatterns": [
+      "tmp/**",
+      "artifacts/**",
+      "**/node_modules/**",
+      "**/dist/**",
+      "**/target/**",
+      "**/.venv/**",
+      "models/**",
+      "data/**"
+    ]
+  },
+  "security": {
+    "enableSecurityCheck": true
+  },
+  "tokenCount": {
+    "encoding": "o200k_base"
+  }
 }
